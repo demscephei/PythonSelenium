@@ -99,7 +99,7 @@ def catalog_scrape(urls, cutoff_date, system1_csv, patchstatus_csv, header_mappi
         return sys1df
 
 def build_excel():
-    catalogDf = catalog_scrape(
+    partialCatalogDf = catalog_scrape(
         urls=catalog_urls,
         cutoff_date=PREVIOUS_PATCH_WEDNESDAY,
         system1_csv=f"system1_{datetime.now().strftime('%Y_%m_%d')}.csv",
@@ -109,46 +109,63 @@ def build_excel():
         filter_terms=[
             'Preview', 'Dynamic', 'Azure Stack HCI', 'Office 2019', 'Access', 'Project',
             'Outlook', 'PowerPoint', 'Visio', 'Publisher', '3.5, 4.8 and 4.8.1', '3.5, 4.7.2 and 4.8',
+            'SQL Server 2016 Service Pack 3 CU', 'SQL Server 2019 RTM GDR',
             '.NET Framework 3.5 and 4.8.1 for Windows 10 Version 22H2 for x64'
         ],
-        screenshot=False
+        screenshot=False # Set to true if screenshots are needed
     )
 
-    masterDf = catalogDf
-    header_list = ["#", "Vendor Name", "Vendor Product", "Model/Version", "Patch Name", "Patch Description", "Patch Link", "Release Date", "Update Type", "Approved by BN", "Test Status", "Comment"]
-    masterDf = masterDf.reindex(columns=header_list)
+    # Catalog DataFrame without duplicates
+    catalogDf = partialCatalogDf.drop_duplicates(subset=["Patch Name"], keep='last')
 
+    # Catalog DataFrame headers
+    header_list = ["#", "Vendor Name", "Vendor Product", "Model/Version", "Patch Name", "Patch Description", "Patch Link", "Release Date", "Update Type", "Approved by BN", "Test Status", "Comment"]
+    catalogDf = catalogDf.reindex(columns=header_list)
+
+    # Systems applicability table headers
     systems_headers = ["","Server 2016 Classic 6.98 McAfee","Server 2016 Classic 6.98 Symantec","Server 2019 Classic 6.97 McAfee","Server 2019 Classic 6.97 Symantec"
                        ,"Server 2016 Evo 24.1 McAfee","Server 2016 Evo 24.1 Symantec","Server 2016 Evo 24.1 Windows Defender"
                        ,"Server 2019 Evo 23.1 McAfee","Server 2019 Evo 23.1 Symantec"
                        ,"Server 2019 Evo 23.2 McAfee","Server 2019 Evo 23.2 Symantec","Server 2019 Evo 23.2 Windows Defender"
                        ,"Server 2022 Evo 22.2 McAfee","Server 2022 Evo 22.2 Symantec","Wind10 21H2 Classic 6.98 Evo versions: 22.X - 23.1"
                        ,"Win10 22H2 Classic 6.97 Evo 23.2","Win11 22H2 Evo 23.1","Win11 23H2 Evo 24.1"]
-    systemsDf = pd.DataFrame(columns=systems_headers)
-    concatDf = pd.concat([masterDf,systemsDf], axis=1)
+    systemsDf = pd.DataFrame(columns=systems_headers) # Build System applicability DataFarame
+    concatDf = pd.concat([catalogDf,systemsDf], axis=1) # Concatenate with Catalog Dataframe
 
-    # Column numbers:
+    # Column numbers (0 indexed):
     # M - N - O - P - Q - R - S - T - U - V - W - X - Y - Z - AA - AB - AC - AD - AE
-    # 13- 14- 15- 16- 17- 18- 19- 20- 21- 22- 23- 24- 25- 26- 27 - 28 - 29 - 30 - 31
+    # 12- 13- 14- 15- 16- 17- 18- 19- 20- 21- 22- 23- 24- 25- 26- 27 - 28 - 29 - 30
 
     def map_applicability(row):
-        if row[2] == "Windows Server 2016" or "Windows Server 2016 (2024)":
-            row[[16,17,21,22,23,24,25,26,27,28,29,30,31]] = 'N/A'
-        elif row[2] == "Windows Server 2019" or "Windows Server 2019 (2024)":
-            row[[14,15,18,19,20,26,27,28,29,30,31]] = 'N/A'
-        elif row[2] == "Windows Server 2022":
-            row[[14,15,16,17,18,19,20,21,22,23,24,25,28,29,30,31]] = 'N/A'
-        elif row[2] == "Windows 10":
-            row[[14,15,16,17,18,19,20,21,22,23,24,25,26,27,30,31]] = 'N/A'
-        elif row[2] == "Windows 11":
-            row[[14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29]] = 'N/A'
-        elif row[2] == "SQL Server 2016":
-            row[[14,15,18,19,20,21,22,23,24,25,26,27,28,30,31]] = 'N/A'
-        elif row[2] == "SQL Server 2019":
-            row[[16,17,18,19,20,21,22,23,24,25,26,27,29,30,31]] = 'N/A'
-        elif row[2] == "Office 2016":
-            row[[14,15,20,25,26,27,28,29,30,31]] = 'N/A'
-            
+        if row.iloc[4] == "KB890830":
+            row.iloc[[13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30]] = ''
+            row.loc[["#"]] = "1"
+            row.loc[["Vendor Product"]] = "Windows (All)"
+            row.loc[["Model/Version"]] = "v5.1XX"
+            row.loc[["Comment"]] = "Replaces KB890830 v5.1XX (Mmm-YY)"
+        elif row.iloc[2] == "Windows Server 2016":
+            row.iloc[[15,16,20,21,22,23,24,25,26,27,28,29,30]] = 'N/A'
+        elif row.iloc[2] == "Windows Server 2019":
+            row.iloc[[13,14,17,18,19,25,26,27,28,29,30]] = 'N/A'
+        elif row.iloc[2] == "Windows Server 2016 (2024)":
+            row.iloc[[15,16,20,21,22,23,24,25,26,27,28,29,30]] = 'N/A'
+        elif row.iloc[2] == "Windows Server 2019 (2024)":
+            row.iloc[[13,14,17,18,19,25,26,27,28,29,30]] = 'N/A'
+        elif row.iloc[2] == "Windows Server 2022":
+            row.iloc[[13,14,15,16,17,18,19,20,21,22,23,24,27,28,29,30]] = 'N/A'
+        elif row.iloc[2] == "Windows 10":
+            row.iloc[[13,14,15,16,17,18,19,20,21,22,23,24,25,26,29,30]] = 'N/A'
+            row.iloc[[11]] = 'Also applies for Windows 10 Version 21H2 for x64.'
+        elif row.iloc[2] == "Windows 11":
+            row.iloc[[13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28]] = 'N/A'
+            row.iloc[[11]] = 'Also applies for Windows 11 Version 22H2 for x64.'
+        elif row.iloc[2] == "SQL Server 2016":
+            row.iloc[[13,14,17,18,19,20,21,22,23,24,25,26,27,29,30]] = 'N/A'
+        elif row.iloc[2] == "SQL Server 2019":
+            row.iloc[[15,16,17,18,19,20,21,22,23,24,25,26,28,29,30]] = 'N/A'
+        elif row.iloc[2] == "Office 2016":
+            row.iloc[[13,14,19,25,26,27,28,29,30]] = 'N/A'
+         
         return row
 
     finalDf = concatDf.apply(map_applicability, axis=1)
@@ -199,25 +216,24 @@ def build_excel():
         )
         # Style header row
         for cell in worksheet[1]:
-            cell.fill = header_fill
             cell.font = header_font
             cell.alignment = center_alignment
             cell.border = thin_border
-
+            if cell.column in [14, 15, 26, 27, 28]:
+                cell.fill = yellow_fill
+            elif cell.column in [16,17,23,24,25,29]:
+                cell.fill = darkred_fill
+            elif cell.column in [18,19,20,31]:
+                cell.fill = darkgreen_fill
+            elif cell.column in [21,22,30]:
+                cell.fill = darkblue_fill
+            else:
+                cell.fill = header_fill
+            
         # Style separator line
-        for row in worksheet.columns[13]:
-            cell.fill = black_fill
-
-        # Style Systems headers
-        for cell in worksheet[14,15,26,27,28]:
-            cell.fill = yellow_fill
-        for cell in worksheet[16,17,23,24,25,29]:
-            cell.fill = darkred_fill
-        for cell in worksheet[18,19,20,31]:
-            cell.fill = darkgreen_fill
-        for cell in worksheet[21,22,30]:
-            cell.fill = darkblue_fill
-
+        for row in worksheet.iter_rows(min_col=13,max_col=13):
+            for cell in row:
+                cell.fill = black_fill
 
         # Style all other rows and apply hyperlink/green fill for column E
         for row in worksheet.iter_rows(min_row=2):
@@ -240,7 +256,7 @@ def build_excel():
                 # Set alignment: 
                 # - Center alignment for all cells horizontally and vertically
                 # - For columns F and G: vertically centered but horizontally left-aligned
-                if cell.column in [6, 7]:  # Columns F and G
+                if cell.column in [6, 7, 12]:  # Columns F, G and L
                     cell.alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
                 else:
                     cell.alignment = center_alignment  # Center horizontally and vertically for all other columns
