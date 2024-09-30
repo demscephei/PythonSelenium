@@ -118,9 +118,44 @@ def build_excel():
     header_list = ["#", "Vendor Name", "Vendor Product", "Model/Version", "Patch Name", "Patch Description", "Patch Link", "Release Date", "Update Type", "Approved by BN", "Test Status", "Comment"]
     masterDf = masterDf.reindex(columns=header_list)
 
+    systems_headers = ["","Server 2016 Classic 6.98 McAfee","Server 2016 Classic 6.98 Symantec","Server 2019 Classic 6.97 McAfee","Server 2019 Classic 6.97 Symantec"
+                       ,"Server 2016 Evo 24.1 McAfee","Server 2016 Evo 24.1 Symantec","Server 2016 Evo 24.1 Windows Defender"
+                       ,"Server 2019 Evo 23.1 McAfee","Server 2019 Evo 23.1 Symantec"
+                       ,"Server 2019 Evo 23.2 McAfee","Server 2019 Evo 23.2 Symantec","Server 2019 Evo 23.2 Windows Defender"
+                       ,"Server 2022 Evo 22.2 McAfee","Server 2022 Evo 22.2 Symantec","Wind10 21H2 Classic 6.98 Evo versions: 22.X - 23.1"
+                       ,"Win10 22H2 Classic 6.97 Evo 23.2","Win11 22H2 Evo 23.1","Win11 23H2 Evo 24.1"]
+    systemsDf = pd.DataFrame(columns=systems_headers)
+    concatDf = pd.concat([masterDf,systemsDf], axis=1)
+
+    # Column numbers:
+    # M - N - O - P - Q - R - S - T - U - V - W - X - Y - Z - AA - AB - AC - AD - AE
+    # 13- 14- 15- 16- 17- 18- 19- 20- 21- 22- 23- 24- 25- 26- 27 - 28 - 29 - 30 - 31
+
+    def map_applicability(row):
+        if row[2] == "Windows Server 2016" or "Windows Server 2016 (2024)":
+            row[[16,17,21,22,23,24,25,26,27,28,29,30,31]] = 'N/A'
+        elif row[2] == "Windows Server 2019" or "Windows Server 2019 (2024)":
+            row[[14,15,18,19,20,26,27,28,29,30,31]] = 'N/A'
+        elif row[2] == "Windows Server 2022":
+            row[[14,15,16,17,18,19,20,21,22,23,24,25,28,29,30,31]] = 'N/A'
+        elif row[2] == "Windows 10":
+            row[[14,15,16,17,18,19,20,21,22,23,24,25,26,27,30,31]] = 'N/A'
+        elif row[2] == "Windows 11":
+            row[[14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29]] = 'N/A'
+        elif row[2] == "SQL Server 2016":
+            row[[14,15,18,19,20,21,22,23,24,25,26,27,28,30,31]] = 'N/A'
+        elif row[2] == "SQL Server 2019":
+            row[[16,17,18,19,20,21,22,23,24,25,26,27,29,30,31]] = 'N/A'
+        elif row[2] == "Office 2016":
+            row[[14,15,20,25,26,27,28,29,30,31]] = 'N/A'
+            
+        return row
+
+    finalDf = concatDf.apply(map_applicability, axis=1)
+
     # Save DataFrame to Excel using openpyxl engine
     with pd.ExcelWriter("System 1 Patches.xlsx", engine="openpyxl") as writer:
-        masterDf.to_excel(writer, sheet_name="September-2024", index=False)
+        finalDf.to_excel(writer, sheet_name="September-2024", index=False)
 
         workbook = writer.book
         worksheet = workbook["September-2024"]
@@ -138,6 +173,7 @@ def build_excel():
         worksheet.column_dimensions["J"].width = 7
         worksheet.column_dimensions["K"].width = 7
         worksheet.column_dimensions["L"].width = 35
+        worksheet.column_dimensions["M"].width = 1
         worksheet.row_dimensions[1].height = 46.5
         worksheet.row_dimensions[2].height = 46.5
         worksheet.row_dimensions[3].height = 34.5
@@ -150,6 +186,11 @@ def build_excel():
         calibri_font_8 = Font(name='Calibri', size=8)
         calibri_hyperlink = Font(name='Calibri', size=8, color="0000FF", underline="single")
         green_fill = PatternFill(start_color="92D050", end_color="92D050", fill_type="solid")
+        black_fill = PatternFill(start_color="000000", end_color="000000", fill_type="solid")
+        yellow_fill = PatternFill(start_color="ffff00", end_color="ffff00", fill_type="solid")
+        darkred_fill = PatternFill(start_color="c00000", end_color="c00000", fill_type="solid")
+        darkgreen_fill = PatternFill(start_color="00b050", end_color="00b050", fill_type="solid")
+        darkblue_fill = PatternFill(start_color="8ea9db", end_color="8ea9db", fill_type="solid")
 
         # Define thin border for all cells
         thin_border = Border(
@@ -162,6 +203,21 @@ def build_excel():
             cell.font = header_font
             cell.alignment = center_alignment
             cell.border = thin_border
+
+        # Style separator line
+        for row in worksheet.columns[13]:
+            cell.fill = black_fill
+
+        # Style Systems headers
+        for cell in worksheet[14,15,26,27,28]:
+            cell.fill = yellow_fill
+        for cell in worksheet[16,17,23,24,25,29]:
+            cell.fill = darkred_fill
+        for cell in worksheet[18,19,20,31]:
+            cell.fill = darkgreen_fill
+        for cell in worksheet[21,22,30]:
+            cell.fill = darkblue_fill
+
 
         # Style all other rows and apply hyperlink/green fill for column E
         for row in worksheet.iter_rows(min_row=2):
