@@ -3,7 +3,7 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from datetime import datetime
+from datetime import datetime, timedelta
 import pandas as pd
 import re
 from openpyxl.styles import PatternFill, Alignment, Font, Border, Side
@@ -98,10 +98,44 @@ def catalog_scrape(urls, cutoff_date, system1_csv, patchstatus_csv, header_mappi
         driver.quit()
         return sys1df
 
-def build_excel():
+def map_applicability(row):
+    if row.iloc[4] == "KB890830":
+        msrtVer = row.loc["Patch Description"]
+        msrtDecimal = int(msrtVer[46:52][3:])
+        row.iloc[[13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30]] = ''
+        row.loc[["#"]] = "1"
+        row.loc[["Vendor Product"]] = "Windows (All)"
+        row.loc[["Model/Version"]] = f"{msrtVer[46:52]}"
+        row.loc[["Comment"]] = f"Replaces KB890830 {msrtVer[46:49]}{msrtDecimal-1} ({(datetime.today().replace(day=1) - timedelta(days=1)).strftime("%b-%y")})"
+    elif row.iloc[2] == "Windows Server 2016":
+        row.iloc[[15,16,20,21,22,23,24,25,26,27,28,29,30]] = 'N/A'
+    elif row.iloc[2] == "Windows Server 2019":
+        row.iloc[[13,14,17,18,19,25,26,27,28,29,30]] = 'N/A'
+    elif row.iloc[2] == "Windows Server 2016 (2024)":
+        row.iloc[[15,16,20,21,22,23,24,25,26,27,28,29,30]] = 'N/A'
+    elif row.iloc[2] == "Windows Server 2019 (2024)":
+        row.iloc[[13,14,17,18,19,25,26,27,28,29,30]] = 'N/A'
+    elif row.iloc[2] == "Windows Server 2022":
+        row.iloc[[13,14,15,16,17,18,19,20,21,22,23,24,27,28,29,30]] = 'N/A'
+    elif row.iloc[2] == "Windows 10":
+        row.iloc[[13,14,15,16,17,18,19,20,21,22,23,24,25,26,29,30]] = 'N/A'
+        row.iloc[[11]] = 'Also applies for Windows 10 Version 21H2 for x64.'
+    elif row.iloc[2] == "Windows 11":
+        row.iloc[[13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28]] = 'N/A'
+        row.iloc[[11]] = 'Also applies for Windows 11 Version 22H2 for x64.'
+    elif row.iloc[2] == "SQL Server 2016":
+        row.iloc[[13,14,17,18,19,20,21,22,23,24,25,26,27,29,30]] = 'N/A'
+    elif row.iloc[2] == "SQL Server 2019":
+        row.iloc[[15,16,17,18,19,20,21,22,23,24,25,26,28,29,30]] = 'N/A'
+    elif row.iloc[2] == "Office 2016":
+        row.iloc[[13,14,19,25,26,27,28,29,30]] = 'N/A'
+        
+    return row
+
+def build_excel(ppw,takescreen):
     partialCatalogDf = catalog_scrape(
         urls=catalog_urls,
-        cutoff_date=PREVIOUS_PATCH_WEDNESDAY,
+        cutoff_date=ppw,
         system1_csv=f"system1_{datetime.now().strftime('%Y_%m_%d')}.csv",
         patchstatus_csv=f"patch_status_{datetime.now().strftime('%Y_%m_%d')}.csv",
         header_mappings={'Classification': 'Last Updated'},
@@ -112,7 +146,7 @@ def build_excel():
             'SQL Server 2016 Service Pack 3 CU', 'SQL Server 2019 RTM GDR',
             '.NET Framework 3.5 and 4.8.1 for Windows 10 Version 22H2 for x64'
         ],
-        screenshot=False # Set to true if screenshots are needed
+        screenshot=takescreen # Set to true if screenshots are needed
     )
 
     # Catalog DataFrame without duplicates
@@ -136,37 +170,6 @@ def build_excel():
     # M - N - O - P - Q - R - S - T - U - V - W - X - Y - Z - AA - AB - AC - AD - AE
     # 12- 13- 14- 15- 16- 17- 18- 19- 20- 21- 22- 23- 24- 25- 26- 27 - 28 - 29 - 30
 
-    def map_applicability(row):
-        if row.iloc[4] == "KB890830":
-            row.iloc[[13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30]] = ''
-            row.loc[["#"]] = "1"
-            row.loc[["Vendor Product"]] = "Windows (All)"
-            row.loc[["Model/Version"]] = "v5.1XX"
-            row.loc[["Comment"]] = "Replaces KB890830 v5.1XX (Mmm-YY)"
-        elif row.iloc[2] == "Windows Server 2016":
-            row.iloc[[15,16,20,21,22,23,24,25,26,27,28,29,30]] = 'N/A'
-        elif row.iloc[2] == "Windows Server 2019":
-            row.iloc[[13,14,17,18,19,25,26,27,28,29,30]] = 'N/A'
-        elif row.iloc[2] == "Windows Server 2016 (2024)":
-            row.iloc[[15,16,20,21,22,23,24,25,26,27,28,29,30]] = 'N/A'
-        elif row.iloc[2] == "Windows Server 2019 (2024)":
-            row.iloc[[13,14,17,18,19,25,26,27,28,29,30]] = 'N/A'
-        elif row.iloc[2] == "Windows Server 2022":
-            row.iloc[[13,14,15,16,17,18,19,20,21,22,23,24,27,28,29,30]] = 'N/A'
-        elif row.iloc[2] == "Windows 10":
-            row.iloc[[13,14,15,16,17,18,19,20,21,22,23,24,25,26,29,30]] = 'N/A'
-            row.iloc[[11]] = 'Also applies for Windows 10 Version 21H2 for x64.'
-        elif row.iloc[2] == "Windows 11":
-            row.iloc[[13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28]] = 'N/A'
-            row.iloc[[11]] = 'Also applies for Windows 11 Version 22H2 for x64.'
-        elif row.iloc[2] == "SQL Server 2016":
-            row.iloc[[13,14,17,18,19,20,21,22,23,24,25,26,27,29,30]] = 'N/A'
-        elif row.iloc[2] == "SQL Server 2019":
-            row.iloc[[15,16,17,18,19,20,21,22,23,24,25,26,28,29,30]] = 'N/A'
-        elif row.iloc[2] == "Office 2016":
-            row.iloc[[13,14,19,25,26,27,28,29,30]] = 'N/A'
-         
-        return row
 
     finalDf = concatDf.apply(map_applicability, axis=1)
 
@@ -260,6 +263,3 @@ def build_excel():
                     cell.alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
                 else:
                     cell.alignment = center_alignment  # Center horizontally and vertically for all other columns
-
-
-build_excel()
