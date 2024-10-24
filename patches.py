@@ -36,6 +36,9 @@ def av_scrape():
         #return avdf
 
 # URLs for Microsoft Catalog patch gathering
+av_urls = []
+
+# URLs for Microsoft Catalog patch gathering
 catalog_urls = [
     ("https://www.catalog.update.microsoft.com/Search.aspx?q=Windows+Server+2016+for+x64+2024","Windows Server 2016 (2024)","version 1607"),
     ("https://www.catalog.update.microsoft.com/Search.aspx?q=Windows+Server+2019+for+x64+2024","Windows Server 2019 (2024)","version 1809"),
