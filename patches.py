@@ -180,7 +180,9 @@ def build_excel(ppw,takescreen,progress_queue):
             'Preview', 'Dynamic', 'Azure Stack HCI', 'Office 2019', 'Access', 'Project',
             'Outlook', 'PowerPoint', 'Visio', 'Publisher', '3.5, 4.8 and 4.8.1', '3.5, 4.7.2 and 4.8',
             'SQL Server 2016 Service Pack 3 CU', 'SQL Server 2019 RTM GDR',
-            '.NET Framework 3.5 and 4.8.1 for Windows 10 Version 22H2 for x64'
+            '.NET Framework 3.5 and 4.8.1 for Windows 10 Version 22H2 for x64',
+            'Cumulative Update for Microsoft server operating system, version 22H2',
+            'Office LTSC 2024 Client Update Version Perpetual for x64 based Edition'
         ],
         screenshot=takescreen, # Set to true if screenshots are needed
         progress=progress_queue
